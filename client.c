@@ -11,25 +11,47 @@
 #define BOOLEAN_FALSE 0
 #define BOOLEAN_TRUE  1
 
+#define PB_STR "|||||||||||||||||||||||||||||||||||||||||||||"
+#define PB_WIDTH 45
+
+
+/***
+
+TODO
+234234762 -> 234.23 MiB
+
+***/
+
+char* bytes_to_hr(int bytes) {
+
+}
+
 struct stats_info {
 	unsigned long int* bytes_transferred;
 	int* all_bytes_transferred;
 };
 
 void *print_status(void* stats_struct) {
-	unsigned long int last_bytes_transferred = 0;
 	struct stats_info *stats = (struct stats_info*)stats_struct;
-	int* n = stats->all_bytes_transferred;
+	unsigned long int last_bytes_transferred = 0;
 	unsigned long int* bytes_transferred = stats->bytes_transferred;
+	double size = 4 * ((long)1 << 30);
+	int printed_chars = 0;
+	char* end_msg = "Connection closed";
 
-	while(!*n) {
+	while(!*stats->all_bytes_transferred) {
+		double perc = *bytes_transferred/size;
 		last_bytes_transferred=*bytes_transferred;
 		sleep(1);
-		printf("wrote %fMiB at %fMbps\n",
-		(*bytes_transferred-last_bytes_transferred)/(double)(1<<20),
-		(double)8*((*bytes_transferred-last_bytes_transferred)/(double)(1000000)));
+
+		int val = (int) (perc * 100);
+    int lpad = (int) (perc * PB_WIDTH);
+    int rpad = PB_WIDTH - lpad;
+    printed_chars = printf ("\r%3d%% [%.*s%*s] %.3fMbps", val, lpad, PB_STR, rpad, "",(double)8*((*bytes_transferred-last_bytes_transferred)/(double)(1000000)));
+    fflush (stdout);
 	}
 
+	printf ("\r%s%*s\n",end_msg,(int)(printed_chars-strlen(end_msg)),"");
 	return NULL;
 }
 
@@ -58,7 +80,7 @@ int main() {
   serv_addr.sin_family = AF_INET;
   serv_addr.sin_port = htons(PORT);
 
-  if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <=0 )
+  if(inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0 )
   {
       printf("Invalid address\n");
       return EXIT_FAILURE;
@@ -113,11 +135,10 @@ int main() {
 	}
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
-
-  printf("EOF received, closing connection\n");
-  printf("%fs\n",e_time);
-  printf("%luB\n",bytes_transferred);
-  printf("%fMbps, %fMiB/s\n",(double)8*((bytes_transferred/e_time)/(double)(1000000)),(bytes_transferred/e_time)/(double)(1<<20));
+  printf("           Time = %.2f s\n",e_time);
+  printf("     Bytes sent = %.2f MiB\n",bytes_transferred/(double)(1<<20));
+  printf("  Average Speed = %.2f Mbps\n",(double)8*((bytes_transferred/e_time)/(double)(1000000)));
+	printf("                  %.2f MiB/s\n",(bytes_transferred/e_time)/(double)(1<<20));
 
   if(bytes_read == -1)
     perror("read");
