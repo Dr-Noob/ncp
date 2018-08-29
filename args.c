@@ -1,26 +1,162 @@
-#include "args.h"
+#include <getopt.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include "args.h"
+#include "tools.h"
+
+#define ARG_STR_LISTEN    "listen"
+#define ARG_STR_OUT       "out"
+#define ARG_STR_FILE      "file"
+#define ARG_STR_ADDR      "addr"
+#define ARG_STR_PORT      "port"
+#define ARG_STR_HELP      "help"
+#define ARG_CHAR_LISTEN   'l'
+#define ARG_CHAR_OUT      'o'
+#define ARG_CHAR_FILE     'f'
+#define ARG_CHAR_ADDR     'a'
+#define ARG_CHAR_PORT     'p'
+#define ARG_CHAR_HELP     'h'
+
+static struct args_struct args;
+struct args_struct {
+  int help_flag;
+  int listen_flag;
+  int port;
+  char* addr;
+  char* file;
+  MODE mode;
+};
+
+int check_options() {
+  if(args.listen_flag) {
+    args.mode = MODE_SERVER;
+    if(args.addr != 0) {
+      printf("ERROR: Invalid args\n");
+      args.help_flag = BOOLEAN_TRUE;
+      return BOOLEAN_FALSE;
+    }
+  } else if(args.addr != NULL) {
+    args.mode = MODE_CLIENT;
+  } else if(!args.help_flag){
+    printf("ERROR: None address specified nor listen option\n");
+    args.help_flag = BOOLEAN_TRUE;
+    return BOOLEAN_FALSE;
+  }
+
+  return BOOLEAN_TRUE;
+}
 
 int parseArgs(int argc, char* argv[]) {
-  return 0;
+  int c;
+  int digit_optind = 0;
+  int option_index = 0;
+  opterr = 0;
+
+  args.help_flag = BOOLEAN_FALSE;
+  args.listen_flag = BOOLEAN_FALSE;
+  args.port = 0;
+  args.addr = NULL;
+  args.file = NULL;
+  args.mode = MODE_EMPTY;
+
+  static struct option long_options[] = {
+      {ARG_STR_HELP,     no_argument,         0, ARG_CHAR_HELP   },
+      {ARG_STR_LISTEN,   no_argument,         0, ARG_CHAR_LISTEN },
+      {ARG_STR_OUT,      required_argument,   0, ARG_CHAR_OUT    },
+      {ARG_STR_FILE,     required_argument,   0, ARG_CHAR_FILE   },
+      {ARG_STR_ADDR,     required_argument,   0, ARG_CHAR_ADDR   },
+      {ARG_STR_PORT,     required_argument,   0, ARG_CHAR_PORT   },
+      {0, 0, 0, 0}
+  };
+
+  c = getopt_long(argc, argv,"",long_options, &option_index);
+
+  while (c != -1) {
+    if(c == ARG_CHAR_LISTEN) {
+      args.listen_flag = BOOLEAN_TRUE;
+    }
+    else if(c == ARG_CHAR_OUT || c == ARG_CHAR_FILE) {
+      if(args.file != NULL) {
+        printf("ERROR: Output file specified more than once\n");
+        return BOOLEAN_FALSE;
+      }
+      args.file = optarg;
+    }
+    else if(c == ARG_CHAR_ADDR) {
+      if(args.addr != NULL) {
+        printf("ERROR: IP Address specified more than once\n");
+        return BOOLEAN_FALSE;
+      }
+      args.addr = optarg;
+    }
+    else if(c == ARG_CHAR_PORT) {
+      if(args.port != -1) {
+        printf("ERROR: Port specified more than once\n");
+        return BOOLEAN_FALSE;
+      }
+      //TODO: Improve atoi
+      args.port = atoi(optarg);
+    }
+    else if(c == ARG_CHAR_HELP) {
+      if(args.help_flag) {
+         printf("ERROR: Help option specified more than once\n");
+         return BOOLEAN_FALSE;
+      }
+      args.help_flag = BOOLEAN_TRUE;
+    }
+    else if(c == '?') {
+       printf("WARNING: Invalid options\n");
+       args.help_flag  = BOOLEAN_TRUE;
+       break;
+    }
+    else
+      printf("Bug at line number %d in file %s\n", __LINE__, __FILE__);
+
+    option_index = 0;
+    c = getopt_long(argc, argv,"",long_options, &option_index);
+  }
+
+  print_args();
+
+  if (optind < argc) {
+    printf("WARNING: Invalid options\n");
+    args.help_flag  = BOOLEAN_TRUE;
+  }
+
+  return check_options();
 }
 
 int run_server() {
-  return 0;
+  return args.mode == MODE_SERVER;
 }
 int run_client() {
-  return 0;
+  return args.mode == MODE_CLIENT;
 }
 int show_help() {
-  return 0;
+  return args.help_flag;
 }
 
 int get_port() {
-  return 0;
+  return args.port;
 }
 char* get_filename() {
-  return NULL;
+  return args.file;
 }
 char* get_addr() {
-  return NULL;
+  return args.addr;
+}
+
+void print_args() {
+  printf("help_flag=%s\n", args.help_flag ? "true" : "false");
+  printf("listen_flag=%s\n", args.listen_flag ? "true" : "false");
+  printf("port=%d\n",args.port);
+  printf("ip=%s\n",args.addr);
+  printf("file=%s\n",args.file);
+  if(args.mode == MODE_CLIENT)
+    printf("mode=client\n");
+  else if(args.mode == MODE_SERVER)
+    printf("mode=server\n");
+  else
+    printf("mode=empty\n");
 }
