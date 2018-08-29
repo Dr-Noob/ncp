@@ -20,7 +20,7 @@ allow stdin and stdout if file or out are not specified
 static const char* VERSION = "0.1";
 
 void help(int argc, char *argv[]) {
-	printf("ncp v%s -- Copy files over the network\n\
+	fprintf(stderr,"ncp v%s -- Copy files over the network\n\
 This software can work in two modes:\n\
   * Client: You choose the file to send and the address to be sent.\n\
   Usage: %s --addr=IP [--file=FILE] [--port=PORT]\n\

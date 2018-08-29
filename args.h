@@ -7,6 +7,8 @@ typedef int MODE;
 #define MODE_CLIENT 1
 #define MODE_SERVER 2
 
+#define INVALID_PORT -1
+
 int parseArgs(int argc, char* argv[]);
 
 int run_server();

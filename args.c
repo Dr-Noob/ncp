@@ -32,14 +32,14 @@ int check_options() {
   if(args.listen_flag) {
     args.mode = MODE_SERVER;
     if(args.addr != 0) {
-      printf("ERROR: Invalid args\n");
+      fprintf(stderr,"ERROR: Invalid args\n");
       args.help_flag = BOOLEAN_TRUE;
       return BOOLEAN_FALSE;
     }
   } else if(args.addr != NULL) {
     args.mode = MODE_CLIENT;
   } else if(!args.help_flag){
-    printf("ERROR: None address specified nor listen option\n");
+    fprintf(stderr,"ERROR: None address specified nor listen option\n");
     args.help_flag = BOOLEAN_TRUE;
     return BOOLEAN_FALSE;
   }
@@ -55,7 +55,7 @@ int parseArgs(int argc, char* argv[]) {
 
   args.help_flag = BOOLEAN_FALSE;
   args.listen_flag = BOOLEAN_FALSE;
-  args.port = 0;
+  args.port = INVALID_PORT;
   args.addr = NULL;
   args.file = NULL;
   args.mode = MODE_EMPTY;
@@ -78,21 +78,21 @@ int parseArgs(int argc, char* argv[]) {
     }
     else if(c == ARG_CHAR_OUT || c == ARG_CHAR_FILE) {
       if(args.file != NULL) {
-        printf("ERROR: Output file specified more than once\n");
+        fprintf(stderr,"ERROR: Output file specified more than once\n");
         return BOOLEAN_FALSE;
       }
       args.file = optarg;
     }
     else if(c == ARG_CHAR_ADDR) {
       if(args.addr != NULL) {
-        printf("ERROR: IP Address specified more than once\n");
+        fprintf(stderr,"ERROR: IP Address specified more than once\n");
         return BOOLEAN_FALSE;
       }
       args.addr = optarg;
     }
     else if(c == ARG_CHAR_PORT) {
       if(args.port != -1) {
-        printf("ERROR: Port specified more than once\n");
+        fprintf(stderr,"ERROR: Port specified more than once\n");
         return BOOLEAN_FALSE;
       }
       //TODO: Improve atoi
@@ -100,27 +100,25 @@ int parseArgs(int argc, char* argv[]) {
     }
     else if(c == ARG_CHAR_HELP) {
       if(args.help_flag) {
-         printf("ERROR: Help option specified more than once\n");
+         fprintf(stderr,"ERROR: Help option specified more than once\n");
          return BOOLEAN_FALSE;
       }
       args.help_flag = BOOLEAN_TRUE;
     }
     else if(c == '?') {
-       printf("WARNING: Invalid options\n");
+       fprintf(stderr,"WARNING: Invalid options\n");
        args.help_flag  = BOOLEAN_TRUE;
        break;
     }
     else
-      printf("Bug at line number %d in file %s\n", __LINE__, __FILE__);
+      fprintf(stderr,"Bug at line number %d in file %s\n", __LINE__, __FILE__);
 
     option_index = 0;
     c = getopt_long(argc, argv,"",long_options, &option_index);
   }
 
-  print_args();
-
   if (optind < argc) {
-    printf("WARNING: Invalid options\n");
+    fprintf(stderr,"WARNING: Invalid options\n");
     args.help_flag  = BOOLEAN_TRUE;
   }
 
@@ -148,15 +146,15 @@ char* get_addr() {
 }
 
 void print_args() {
-  printf("help_flag=%s\n", args.help_flag ? "true" : "false");
-  printf("listen_flag=%s\n", args.listen_flag ? "true" : "false");
-  printf("port=%d\n",args.port);
-  printf("ip=%s\n",args.addr);
-  printf("file=%s\n",args.file);
+  fprintf(stderr,"help_flag=%s\n", args.help_flag ? "true" : "false");
+  fprintf(stderr,"listen_flag=%s\n", args.listen_flag ? "true" : "false");
+  fprintf(stderr,"port=%d\n",args.port);
+  fprintf(stderr,"ip=%s\n",args.addr);
+  fprintf(stderr,"file=%s\n",args.file);
   if(args.mode == MODE_CLIENT)
-    printf("mode=client\n");
+    fprintf(stderr,"mode=client\n");
   else if(args.mode == MODE_SERVER)
-    printf("mode=server\n");
+    fprintf(stderr,"mode=server\n");
   else
-    printf("mode=empty\n");
+    fprintf(stderr,"mode=empty\n");
 }
