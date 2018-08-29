@@ -6,11 +6,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/time.h>
+#include "tools.h"
 
 #define PORT 5000
-#define BOOLEAN_FALSE 0
-#define BOOLEAN_TRUE  1
-
 #define PB_STR "|||||||||||||||||||||||||||||||||||||||||||||"
 #define PB_WIDTH 45
 
@@ -23,7 +21,7 @@ TODO
 ***/
 
 char* bytes_to_hr(int bytes) {
-
+	return NULL;
 }
 
 struct stats_info {
@@ -55,19 +53,7 @@ void *print_status(void* stats_struct) {
 	return NULL;
 }
 
-int write_all(int fd, char* buf,int bytes_read) {
-	int bytes_write = 0;
-	int ret = 0;
-	do {
-		ret = write(fd,buf+bytes_write,bytes_read-bytes_write);
-		if(ret != -1)bytes_write+=ret;
-		else perror("write_all: write");
-	} while(bytes_write != bytes_read);
-
-	return BOOLEAN_TRUE;
-}
-
-int main() {
+int client(char* filename, char* addr, int port) {
   int socketfd = -1;
   socklen_t length;
 	static struct sockaddr_in serv_addr;
@@ -145,4 +131,6 @@ int main() {
 
   if(close(socketfd) == -1)
     perror("close");
+
+	return EXIT_SUCCESS;
 }

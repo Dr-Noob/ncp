@@ -3,25 +3,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include "tools.h"
 
 #define PORT 5000
-#define BOOLEAN_FALSE 0
-#define BOOLEAN_TRUE  1
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
-int write_all(int fd, char* buf,int bytes_read) {
-	int bytes_write = 0;
-	int ret = 0;
-	do {
-		ret = write(fd,buf+bytes_write,bytes_read-bytes_write);
-		if(ret != -1)bytes_write+=ret;
-		else perror("write_all: write");
-	} while(bytes_write != bytes_read);
-
-	return BOOLEAN_TRUE;
-}
-
-int main() {
+int server(char* filename,int port) {
   int listenfd = -1;
   int socketfd = -1;
   socklen_t length;
@@ -59,7 +46,7 @@ int main() {
 	int socketClosed = BOOLEAN_FALSE;
 
   printf("Socket accepted\n");
-		
+
   do {
     bytes_read = 0;
     memset(buf, 0, buf_size);
@@ -87,4 +74,5 @@ int main() {
 	if(close(socketfd) == -1)
     perror("close");
 
+	return EXIT_SUCCESS;
 }
