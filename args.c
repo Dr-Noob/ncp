@@ -66,6 +66,9 @@ int check_options() {
     }
   }
 
+  if(args.file == NULL)
+    args.no_bar_flag = BOOLEAN_TRUE;
+
   return BOOLEAN_TRUE;
 }
 
