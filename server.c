@@ -26,6 +26,22 @@ int getFileToWrite(char* filename) {
   return fileno(fp);
 }
 
+long int read_file_size(int fd) {
+  long int ret = 0;
+  int bytes_read = read(fd, (char*)&ret, sizeof(long));
+
+  if(bytes_read == -1) {
+    perror("read");
+    return -1;
+  }
+  else if(bytes_read != sizeof(long)) {
+    fprintf(stderr,"ERROR: Failed to read file size(read %d bytes, expected %li)\n",bytes_read,sizeof(long));
+    return -1;
+  }
+
+  return ret;
+}
+
 //filename: optional(if not passed, use STDOUT)
 //port: optional(if not passed, use DEFAULT_PORT)
 int server(char* filename,int port) {
@@ -71,6 +87,10 @@ int server(char* filename,int port) {
 	int socketClosed = BOOLEAN_FALSE;
 
   fprintf(stderr,"Connection established\n");
+  long file_size = read_file_size(socketfd);
+  if(file_size == -1)
+    return EXIT_FAILURE;
+  printf("filesize=%li\n",file_size);
 
   do {
     bytes_read = 0;

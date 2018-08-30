@@ -8,6 +8,8 @@
 #include <assert.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "args.h"
 #include "tools.h"
 
@@ -27,7 +29,7 @@ void *print_status(void* stats_struct) {
 	struct stats_info *stats = (struct stats_info*)stats_struct;
 	unsigned long int last_bytes_transferred = 0;
 	unsigned long int* bytes_transferred = stats->bytes_transferred;
-	
+
 	/*** TODO: This sould be the real file size... ***/
 	double size = 4 * ((long)1 << 30);
 	int printed_chars = 0;
@@ -65,6 +67,23 @@ int getFileToRead(char* filename) {
   }
 
   return fileno(fp);
+}
+
+void send_file_size(int fd, long int size) {
+	write_all(fd,(char*)&size,sizeof(long));
+}
+
+long int getFileSize(char* filename) {
+	struct stat st;
+	if(stat(filename, &st) == -1) {
+		if(errno == ENOENT) {
+			//File does not exist
+			return UNKNOWN_FILE_SIZE;
+		}
+		perror("getFileSize");
+		return -1;
+	}
+	return st.st_size;
 }
 
 //filename: optional(if not passed, use STDIN)
@@ -114,6 +133,11 @@ int client(char* filename, char* addr, int port) {
 
 	stats.bytes_transferred = &bytes_transferred;
 	stats.all_bytes_transferred = &all_bytes_transferred;
+	long int file_size = getFileSize(filename);
+	if(file_size == -1)
+		return EXIT_FAILURE;
+
+	send_file_size(socketfd,file_size);
   gettimeofday(&t0, 0);
 
 	pthread_t status_thread;
