@@ -6,50 +6,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
-#include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <errno.h>
 #include "args.h"
 #include "tools.h"
-
-#define PB_STR "|||||||||||||||||||||||||||||||||||||||||||||"
-#define PB_WIDTH 45
-
-struct stats_info {
-	unsigned long int* bytes_transferred;
-	int* all_bytes_transferred;
-};
-
-void *print_status(void* stats_struct) {
-	struct timespec ts;
-	ts.tv_sec = 0;
-	ts.tv_nsec = 500000000;
-
-	struct stats_info *stats = (struct stats_info*)stats_struct;
-	unsigned long int last_bytes_transferred = 0;
-	unsigned long int* bytes_transferred = stats->bytes_transferred;
-
-	/*** TODO: This sould be the real file size... ***/
-	double size = 4 * ((long)1 << 30);
-	int printed_chars = 0;
-	char* end_msg = "Connection closed";
-
-	while(!*stats->all_bytes_transferred) {
-		double perc = *bytes_transferred/size;
-		last_bytes_transferred=*bytes_transferred;
-    nanosleep(&ts, NULL);
-
-		int val = (int) (perc * 100);
-    int lpad = (int) (perc * PB_WIDTH);
-    int rpad = PB_WIDTH - lpad;
-    printed_chars = fprintf(stderr,"\r%3d%% [%.*s%*s] %sps", val, lpad, PB_STR, rpad, "",bytes_to_hr(*bytes_transferred-last_bytes_transferred,BOOLEAN_TRUE));
-    fflush (stdout);
-	}
-
-	fprintf(stderr,"\r%s%*s\n",end_msg,(int)(printed_chars-strlen(end_msg)),"");
-	return NULL;
-}
+#include "progressbar.h"
 
 int getFileToRead(char* filename) {
   if(filename == NULL)
@@ -126,16 +88,18 @@ int client(char* filename, char* addr, int port) {
   int buf_size = 1<<20;
   int bytes_read = 0;
 	struct stats_info stats;
-  unsigned long int bytes_transferred = 0;
+  long int bytes_transferred = 0;
 	int all_bytes_transferred = BOOLEAN_FALSE;
 	char buf[buf_size];
   struct timeval t0,t1;
 
-	stats.bytes_transferred = &bytes_transferred;
-	stats.all_bytes_transferred = &all_bytes_transferred;
 	long int file_size = getFileSize(filename);
 	if(file_size == -1)
 		return EXIT_FAILURE;
+
+	stats.bytes_transferred = &bytes_transferred;
+	stats.all_bytes_transferred = &all_bytes_transferred;
+	stats.file_size = &file_size;
 
 	send_file_size(socketfd,file_size);
   gettimeofday(&t0, 0);

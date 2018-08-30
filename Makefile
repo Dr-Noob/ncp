@@ -6,13 +6,14 @@ ARGS=args.c
 CLIENT=client.c
 SERVER=server.c
 TOOLS=tools.c
+PROGRESSBAR=progressbar.c
 
-HEADERS=args.h client.h server.h tools.h
+HEADERS=args.h client.h server.h tools.h progressbar.h
 
 OUTPUT=ncp
 
-$(OUTPUT): Makefile $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(HEADERS)
-	$(CXX) -g $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) -pthread $(SANITY_FLAGS) -o $(OUTPUT)
+$(OUTPUT): Makefile $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(PROGRESSBAR) $(HEADERS)
+	$(CXX) -g $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(PROGRESSBAR) -pthread $(SANITY_FLAGS) -o $(OUTPUT)
 
 clean:
 	@rm $(OUTPUT)
