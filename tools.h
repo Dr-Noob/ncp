@@ -6,6 +6,9 @@
 #define UNKNOWN_FILE_SIZE 0
 #define DEFAULT_PORT 5000
 
+#define MIN(a,b) (((a)<(b))?(a):(b))
+#define MAX(a,b) (((a)>(b))?(a):(b))
+
 int write_all(int fd, char* buf,int bytes_read);
 char* bytes_to_hr(long int bytes, int base2_flag);
 

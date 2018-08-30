@@ -17,7 +17,7 @@ Connecting to IP:port...
 allow stdin and stdout if file or out are not specified
 ***/
 
-static const char* VERSION = "0.2";
+static const char* VERSION = "0.3";
 
 void help(int argc, char *argv[]) {
 	fprintf(stderr,"ncp v%s -- Copy files over the network\n\

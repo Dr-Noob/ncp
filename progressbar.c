@@ -25,7 +25,8 @@ void *print_status(void* stats_struct) {
 		int val = (int) (perc * 100);
     int lpad = (int) (perc * PB_WIDTH);
     int rpad = PB_WIDTH - lpad;
-    printed_chars = fprintf(stderr,"\r%3d%% [%.*s%*s] %sps", val, lpad, PB_STR, rpad, "",bytes_to_hr(*bytes_transferred-last_bytes_transferred,BOOLEAN_TRUE));
+    printed_chars = MAX(printed_chars,
+			                  fprintf(stderr,"\r%3d%% [%.*s%*s] %sps", val, lpad, PB_STR, rpad, "",bytes_to_hr(*bytes_transferred-last_bytes_transferred,BOOLEAN_TRUE)));
     fflush (stdout);
 	}
 

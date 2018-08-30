@@ -3,10 +3,11 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
+#include <sys/time.h>
 #include "tools.h"
+#include "progressbar.h"
 #include "args.h"
-
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 int getFileToWrite(char* filename) {
   if(filename == NULL)
@@ -84,13 +85,28 @@ int server(char* filename,int port) {
   int buf_size = 1<<20;
 	int bytes_read = 0;
 	char buf[buf_size];
+  struct timeval t0,t1;
+  struct stats_info stats;
+  long int bytes_transferred = 0;
+  int all_bytes_transferred = BOOLEAN_FALSE;
 	int socketClosed = BOOLEAN_FALSE;
 
   fprintf(stderr,"Connection established\n");
   long file_size = read_file_size(socketfd);
   if(file_size == -1)
     return EXIT_FAILURE;
-  printf("filesize=%li\n",file_size);
+
+  stats.bytes_transferred = &bytes_transferred;
+	stats.all_bytes_transferred = &all_bytes_transferred;
+	stats.file_size = &file_size;
+
+  gettimeofday(&t0, 0);
+
+	pthread_t status_thread;
+	if(pthread_create(&status_thread, NULL, &print_status, &stats)) {
+		fprintf(stderr, "Error creating thread\n");
+		return EXIT_FAILURE;
+	}
 
   do {
     bytes_read = 0;
@@ -99,6 +115,7 @@ int server(char* filename,int port) {
     bytes_read = read(socketfd, buf, buf_size);
 		if(bytes_read > 0) {
       write_all(file,buf,MIN(bytes_read,buf_size));
+      bytes_transferred += bytes_read;
 		}
     else if(bytes_read == -1)
 		{
@@ -114,7 +131,19 @@ int server(char* filename,int port) {
     }
   } while(!socketClosed);
 
-  fprintf(stderr,"Connection closed\n");
+  all_bytes_transferred = BOOLEAN_TRUE;
+  gettimeofday(&t1, 0);
+
+	if(pthread_join(status_thread, NULL)) {
+		fprintf(stderr, "Error joining thread\n");
+		return 2;
+	}
+
+  double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
+  fprintf(stderr,"           Time = %.2f s\n",e_time);
+  fprintf(stderr,"     Bytes read = %s\n",bytes_to_hr(bytes_transferred,BOOLEAN_FALSE));
+  fprintf(stderr,"  Average Speed = %sps\n",bytes_to_hr((long)(bytes_transferred/e_time),BOOLEAN_TRUE));
+	fprintf(stderr,"                  %s/s\n",bytes_to_hr((long)(bytes_transferred/e_time),BOOLEAN_FALSE));
 
 	if(close(socketfd) == -1)
     perror("close");
