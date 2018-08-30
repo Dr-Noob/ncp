@@ -15,6 +15,7 @@ int run_server();
 int run_client();
 int show_help();
 
+int show_bar();           /*** BOTH ***/
 int get_port();           /*** BOTH ***/
 char* get_filename();     /*** BOTH ***/
 char* get_addr();         /*** CLIENT ***/

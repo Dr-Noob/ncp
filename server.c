@@ -45,7 +45,7 @@ long int read_file_size(int fd) {
 
 //filename: optional(if not passed, use STDOUT)
 //port: optional(if not passed, use DEFAULT_PORT)
-int server(char* filename,int port) {
+int server(int show_bar,char* filename,int port) {
   int file = getFileToWrite(filename);
   if(file == -1)
     return BOOLEAN_FALSE;
@@ -103,10 +103,12 @@ int server(char* filename,int port) {
   gettimeofday(&t0, 0);
 
 	pthread_t status_thread;
-	if(pthread_create(&status_thread, NULL, &print_status, &stats)) {
-		fprintf(stderr, "Error creating thread\n");
-		return EXIT_FAILURE;
-	}
+  if(show_bar) {
+    if(pthread_create(&status_thread, NULL, &print_status, &stats)) {
+  		fprintf(stderr, "Error creating thread\n");
+  		return EXIT_FAILURE;
+  	}
+  }
 
   do {
     bytes_read = 0;
@@ -134,10 +136,12 @@ int server(char* filename,int port) {
   all_bytes_transferred = BOOLEAN_TRUE;
   gettimeofday(&t1, 0);
 
-	if(pthread_join(status_thread, NULL)) {
-		fprintf(stderr, "Error joining thread\n");
-		return 2;
-	}
+  if(show_bar) {
+    if(pthread_join(status_thread, NULL)) {
+  		fprintf(stderr, "Error joining thread\n");
+  		return 2;
+  	}
+  }
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);

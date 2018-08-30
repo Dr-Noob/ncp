@@ -12,12 +12,14 @@
 #define ARG_STR_ADDR      "addr"
 #define ARG_STR_PORT      "port"
 #define ARG_STR_HELP      "help"
+#define ARG_STR_BAR       "no-bar"
 #define ARG_CHAR_LISTEN   'l'
 #define ARG_CHAR_OUT      'o'
 #define ARG_CHAR_FILE     'f'
 #define ARG_CHAR_ADDR     'a'
 #define ARG_CHAR_PORT     'p'
 #define ARG_CHAR_HELP     'h'
+#define ARG_CHAR_BAR      'n'
 
 #define MAX_VALID_PORT  2<<15
 #define MIN_VALID_PORT  0
@@ -26,6 +28,7 @@ static struct args_struct args;
 struct args_struct {
   int help_flag;
   int listen_flag;
+  int no_bar_flag;
   int port;
   char* addr;
   char* file;
@@ -73,6 +76,7 @@ int parseArgs(int argc, char* argv[]) {
   opterr = 0;
 
   args.help_flag = BOOLEAN_FALSE;
+  args.no_bar_flag = BOOLEAN_FALSE;
   args.listen_flag = BOOLEAN_FALSE;
   args.port = INVALID_PORT;
   args.addr = NULL;
@@ -80,6 +84,7 @@ int parseArgs(int argc, char* argv[]) {
   args.mode = MODE_EMPTY;
 
   static struct option long_options[] = {
+      {ARG_STR_BAR,      no_argument,         0, ARG_CHAR_BAR    },
       {ARG_STR_HELP,     no_argument,         0, ARG_CHAR_HELP   },
       {ARG_STR_LISTEN,   no_argument,         0, ARG_CHAR_LISTEN },
       {ARG_STR_OUT,      required_argument,   0, ARG_CHAR_OUT    },
@@ -93,7 +98,18 @@ int parseArgs(int argc, char* argv[]) {
 
   while (c != -1) {
     if(c == ARG_CHAR_LISTEN) {
+      if(args.listen_flag) {
+        fprintf(stderr,"ERROR: Listen flag specified more than once\n");
+        return BOOLEAN_FALSE;
+      }
       args.listen_flag = BOOLEAN_TRUE;
+    }
+    else if(c == ARG_CHAR_BAR) {
+      if(args.no_bar_flag) {
+        fprintf(stderr,"ERROR: Bar flag specified more than once\n");
+        return BOOLEAN_FALSE;
+      }
+      args.no_bar_flag = BOOLEAN_TRUE;
     }
     else if(c == ARG_CHAR_OUT || c == ARG_CHAR_FILE) {
       if(args.file != NULL) {
@@ -155,6 +171,9 @@ int show_help() {
 
 int get_port() {
   return args.port;
+}
+int show_bar() {
+  return !args.no_bar_flag;
 }
 char* get_filename() {
   return args.file;

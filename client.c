@@ -51,7 +51,7 @@ long int getFileSize(char* filename) {
 //filename: optional(if not passed, use STDIN)
 //addr: mandatory
 //port: optinal(if not passed, use DEFAULT_PORT)
-int client(char* filename, char* addr, int port) {
+int client(int show_bar,char* filename, char* addr, int port) {
 	int file = getFileToRead(filename);
   if(file == -1)
     return BOOLEAN_FALSE;
@@ -104,11 +104,13 @@ int client(char* filename, char* addr, int port) {
 	send_file_size(socketfd,file_size);
   gettimeofday(&t0, 0);
 
-	pthread_t status_thread;
-	if(pthread_create(&status_thread, NULL, &print_status, &stats)) {
-		fprintf(stderr, "Error creating thread\n");
-		return EXIT_FAILURE;
-	}
+  pthread_t status_thread;
+  if(show_bar) {
+    if(pthread_create(&status_thread, NULL, &print_status, &stats)) {
+  		fprintf(stderr, "Error creating thread\n");
+  		return EXIT_FAILURE;
+  	}
+  }
 
   memset(buf, 0, buf_size);
   bytes_read = read(file, buf, buf_size);
@@ -126,10 +128,12 @@ int client(char* filename, char* addr, int port) {
 	all_bytes_transferred = BOOLEAN_TRUE;
   gettimeofday(&t1, 0);
 
-	if(pthread_join(status_thread, NULL)) {
-		fprintf(stderr, "Error joining thread\n");
-		return 2;
-	}
+  if(show_bar) {
+    if(pthread_join(status_thread, NULL)) {
+  		fprintf(stderr, "Error joining thread\n");
+  		return 2;
+  	}
+  }
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);

@@ -31,7 +31,9 @@ This software can work in two modes:\n\
   Usage: %s --listen [--out=FILE] [--port=PORT]\n\
     --listen: Set server mode.\n\
     --out: Specify file name that will be used to save the received file. If no file is specified, ncp will write to standart output.\n\
-    --port: Specify port to open. If no port is specified, ncp will use the default one.\n"
+    --port: Specify port to open. If no port is specified, ncp will use the default one.\n\
+# This options work on both modes: #\n\
+    --no-bar: Disable progress bar\n"
 			,VERSION,argv[0],argv[0]);
 }
 
@@ -45,7 +47,7 @@ int main(int argc, char* argv[]) {
   }
 
   if(run_server())
-    server(get_filename(),get_port());
+    server(show_bar(),get_filename(),get_port());
   else
-    client(get_filename(),get_addr(),get_port());
+    client(show_bar(),get_filename(),get_addr(),get_port());
 }
