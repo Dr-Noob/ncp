@@ -38,7 +38,7 @@ void send_file_size(int fd, long int size) {
 long int getFileSize(char* filename) {
 	struct stat st;
 	if(stat(filename, &st) == -1) {
-		if(errno == ENOENT) {
+		if(errno == EFAULT) {
 			//File does not exist
 			return UNKNOWN_FILE_SIZE;
 		}
