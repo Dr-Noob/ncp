@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 #include <sys/time.h>
 #include "args.h"
 #include "tools.h"
@@ -13,27 +14,21 @@
 #define PB_STR "|||||||||||||||||||||||||||||||||||||||||||||"
 #define PB_WIDTH 45
 
-
-/***
-
-TODO
-234234762 -> 234.23 MiB
-
-***/
-
-char* bytes_to_hr(int bytes) {
-	return NULL;
-}
-
 struct stats_info {
 	unsigned long int* bytes_transferred;
 	int* all_bytes_transferred;
 };
 
 void *print_status(void* stats_struct) {
+	struct timespec ts;
+	ts.tv_sec = 0;
+	ts.tv_nsec = 500000000;
+
 	struct stats_info *stats = (struct stats_info*)stats_struct;
 	unsigned long int last_bytes_transferred = 0;
 	unsigned long int* bytes_transferred = stats->bytes_transferred;
+	
+	/*** TODO: This sould be the real file size... ***/
 	double size = 4 * ((long)1 << 30);
 	int printed_chars = 0;
 	char* end_msg = "Connection closed";
@@ -41,16 +36,16 @@ void *print_status(void* stats_struct) {
 	while(!*stats->all_bytes_transferred) {
 		double perc = *bytes_transferred/size;
 		last_bytes_transferred=*bytes_transferred;
-		sleep(1);
+    nanosleep(&ts, NULL);
 
 		int val = (int) (perc * 100);
     int lpad = (int) (perc * PB_WIDTH);
     int rpad = PB_WIDTH - lpad;
-    printed_chars = printf ("\r%3d%% [%.*s%*s] %.3fMbps", val, lpad, PB_STR, rpad, "",(double)8*((*bytes_transferred-last_bytes_transferred)/(double)(1000000)));
+    printed_chars = fprintf(stderr,"\r%3d%% [%.*s%*s] %sps", val, lpad, PB_STR, rpad, "",bytes_to_hr(*bytes_transferred-last_bytes_transferred,BOOLEAN_TRUE));
     fflush (stdout);
 	}
 
-	printf ("\r%s%*s\n",end_msg,(int)(printed_chars-strlen(end_msg)),"");
+	fprintf(stderr,"\r%s%*s\n",end_msg,(int)(printed_chars-strlen(end_msg)),"");
 	return NULL;
 }
 
@@ -100,7 +95,7 @@ int client(char* filename, char* addr, int port) {
       return EXIT_FAILURE;
   }
 
-  fprintf(stderr,"Trying connection...\n");
+  fprintf(stderr,"Trying connection to %s:%d...\n",addr,port == INVALID_PORT ? DEFAULT_PORT : port);
 
   if (connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
   {
@@ -109,7 +104,7 @@ int client(char* filename, char* addr, int port) {
   }
 
   fprintf(stderr,"Connected\n");
-  int buf_size = 1<<10;
+  int buf_size = 1<<20;
   int bytes_read = 0;
 	struct stats_info stats;
   unsigned long int bytes_transferred = 0;
@@ -150,9 +145,9 @@ int client(char* filename, char* addr, int port) {
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);
-  fprintf(stderr,"     Bytes sent = %.2f MiB\n",bytes_transferred/(double)(1<<20));
-  fprintf(stderr,"  Average Speed = %.2f Mbps\n",(double)8*((bytes_transferred/e_time)/(double)(1000000)));
-	fprintf(stderr,"                  %.2f MiB/s\n",(bytes_transferred/e_time)/(double)(1<<20));
+  fprintf(stderr,"     Bytes sent = %s\n",bytes_to_hr(bytes_transferred,BOOLEAN_FALSE));
+  fprintf(stderr,"  Average Speed = %sps\n",bytes_to_hr((long)(bytes_transferred/e_time),BOOLEAN_TRUE));
+	fprintf(stderr,"                  %s/s\n",bytes_to_hr((long)(bytes_transferred/e_time),BOOLEAN_FALSE));
 
   if(bytes_read == -1)
     perror("read");

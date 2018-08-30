@@ -59,18 +59,18 @@ int server(char* filename,int port) {
 		return EXIT_FAILURE;
 	}
 
-  fprintf(stderr,"Listening...\n");
+  fprintf(stderr,"Listening on port %d...\n",port == INVALID_PORT ? DEFAULT_PORT : port);
   length = sizeof(cli_addr);
 	if((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0) {
 		perror("accept");
 	}
 
-  int buf_size = 1<<10;
+  int buf_size = 1<<20;
 	int bytes_read = 0;
 	char buf[buf_size];
 	int socketClosed = BOOLEAN_FALSE;
 
-  fprintf(stderr,"Socket accepted\n");
+  fprintf(stderr,"Connection established\n");
 
   do {
     bytes_read = 0;
@@ -90,7 +90,7 @@ int server(char* filename,int port) {
 			socketClosed = BOOLEAN_TRUE;
 		}
     else {
-      fprintf(stderr,"bug\n");
+      fprintf(stderr,"Bug at line number %d in file %s\n", __LINE__, __FILE__);
     }
   } while(!socketClosed);
 

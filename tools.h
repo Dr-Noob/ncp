@@ -6,5 +6,6 @@
 #define DEFAULT_PORT 5000
 
 int write_all(int fd, char* buf,int bytes_read);
+char* bytes_to_hr(long int bytes, int base2_flag);
 
 #endif

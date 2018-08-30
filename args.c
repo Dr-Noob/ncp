@@ -1,4 +1,5 @@
 #include <getopt.h>
+#include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -17,6 +18,9 @@
 #define ARG_CHAR_ADDR     'a'
 #define ARG_CHAR_PORT     'p'
 #define ARG_CHAR_HELP     'h'
+
+#define MAX_VALID_PORT  2<<15
+#define MIN_VALID_PORT  0
 
 static struct args_struct args;
 struct args_struct {
@@ -38,10 +42,25 @@ int check_options() {
     }
   } else if(args.addr != NULL) {
     args.mode = MODE_CLIENT;
+
+    //Check ip is valid
+    struct sockaddr_in sa;
+    if(inet_pton(AF_INET, args.addr, &(sa.sin_addr)) == 0) {
+      fprintf(stderr,"ERROR: IP address('%s') is invalid\n",args.addr);
+      return BOOLEAN_FALSE;
+    }
   } else if(!args.help_flag){
     fprintf(stderr,"ERROR: None address specified nor listen option\n");
     args.help_flag = BOOLEAN_TRUE;
     return BOOLEAN_FALSE;
+  }
+
+  if(args.port != INVALID_PORT) {
+    //Check port is valid
+    if (args.port <= MIN_VALID_PORT || args.port >= MAX_VALID_PORT) {
+      fprintf(stderr,"ERROR: Port('%d') is invalid\n",args.port);
+      return BOOLEAN_FALSE;
+    }
   }
 
   return BOOLEAN_TRUE;
@@ -95,7 +114,6 @@ int parseArgs(int argc, char* argv[]) {
         fprintf(stderr,"ERROR: Port specified more than once\n");
         return BOOLEAN_FALSE;
       }
-      //TODO: Improve atoi
       args.port = atoi(optarg);
     }
     else if(c == ARG_CHAR_HELP) {
