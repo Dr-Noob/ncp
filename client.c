@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <signal.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <errno.h>
@@ -57,6 +58,8 @@ int client(int show_bar,char* filename, char* addr, int port) {
     return BOOLEAN_FALSE;
 
 	assert(addr != NULL);
+  //Ignore SIGPIPE, we'll treat them later if necessary(in write_all)
+  signal(SIGPIPE, SIG_IGN);
   int socketfd = -1;
   socklen_t length;
 	static struct sockaddr_in serv_addr;
@@ -87,6 +90,7 @@ int client(int show_bar,char* filename, char* addr, int port) {
   fprintf(stderr,"Connected\n");
   int buf_size = 1<<20;
   int bytes_read = 0;
+  int status = BOOLEAN_TRUE;
 	struct stats_info stats;
   long int bytes_transferred = 0;
 	int all_bytes_transferred = BOOLEAN_FALSE;
@@ -115,14 +119,16 @@ int client(int show_bar,char* filename, char* addr, int port) {
   memset(buf, 0, buf_size);
   bytes_read = read(file, buf, buf_size);
 
-  while(bytes_read > 0) {
-    write_all(socketfd,buf,bytes_read);
-    bytes_transferred += bytes_read;
+  while(status && bytes_read > 0) {
+    status = write_all(socketfd,buf,bytes_read);
 
-    memset(buf, 0, bytes_read);
-    bytes_read = 0;
+    if(status) {
+      //read if and only if write succedded
+      bytes_transferred += bytes_read;
 
-    bytes_read = read(file, buf, buf_size);
+      memset(buf, 0, bytes_read);
+      bytes_read = read(file, buf, buf_size);
+    }
   }
 
 	all_bytes_transferred = BOOLEAN_TRUE;
@@ -131,9 +137,11 @@ int client(int show_bar,char* filename, char* addr, int port) {
   if(show_bar) {
     if(pthread_join(status_thread, NULL)) {
   		fprintf(stderr, "Error joining thread\n");
-  		return 2;
+  		return EXIT_FAILURE;
   	}
   }
+  else
+    fprintf(stderr, "Connection closed\n");
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);

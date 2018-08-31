@@ -116,8 +116,11 @@ int server(int show_bar,char* filename,int port) {
 
     bytes_read = read(socketfd, buf, buf_size);
 		if(bytes_read > 0) {
-      write_all(file,buf,MIN(bytes_read,buf_size));
-      bytes_transferred += bytes_read;
+      //Force closing socket if write to file fails
+      if(!write_all(file,buf,MIN(bytes_read,buf_size)))
+        socketClosed = BOOLEAN_TRUE;
+      else
+        bytes_transferred += bytes_read;
 		}
     else if(bytes_read == -1)
 		{
@@ -139,9 +142,11 @@ int server(int show_bar,char* filename,int port) {
   if(show_bar) {
     if(pthread_join(status_thread, NULL)) {
   		fprintf(stderr, "Error joining thread\n");
-  		return 2;
+  		return EXIT_FAILURE;
   	}
   }
+  else
+    fprintf(stderr, "Connection closed\n");
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);

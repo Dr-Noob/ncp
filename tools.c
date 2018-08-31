@@ -10,7 +10,10 @@ int write_all(int fd, char* buf,int bytes_read) {
 	do {
 		ret = write(fd,buf+bytes_write,bytes_read-bytes_write);
 		if(ret != -1)bytes_write+=ret;
-		else perror("write_all: write");
+		else {
+			perror("write_all: write");
+			return BOOLEAN_FALSE;
+		}
 	} while(bytes_write != bytes_read);
 
 	return BOOLEAN_TRUE;
