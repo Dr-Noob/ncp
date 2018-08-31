@@ -1,13 +1,14 @@
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
 #include <pthread.h>
+#include <string.h>
 #include <sys/time.h>
+#include <unistd.h>
+
+#include "args.h"
 #include "tools.h"
 #include "progressbar.h"
-#include "args.h"
 
 int getFileToWrite(char* filename) {
   if(filename == NULL)
@@ -50,21 +51,21 @@ int server(int show_bar,char* filename,int port) {
   if(file == -1)
     return BOOLEAN_FALSE;
 
+  socklen_t length;
   int listenfd = -1;
   int socketfd = -1;
-  socklen_t length;
 	static struct sockaddr_in cli_addr;
 	static struct sockaddr_in serv_addr;
+
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  if(port == INVALID_PORT)serv_addr.sin_port = htons(DEFAULT_PORT);
+  else serv_addr.sin_port = htons(port);
 
   if((listenfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
 		perror("socket");
 		return EXIT_FAILURE;
 	}
-
-  serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
-	if(port == INVALID_PORT)serv_addr.sin_port = htons(DEFAULT_PORT);
-  else serv_addr.sin_port = htons(port);
 
   if(bind(listenfd, (struct sockaddr *)&serv_addr,sizeof(serv_addr)) == -1) {
 		perror("bind");
@@ -82,6 +83,8 @@ int server(int show_bar,char* filename,int port) {
 		perror("accept");
 	}
 
+  /*** CONECTION ESTABLISHED ***/
+  fprintf(stderr,"Connection established\n");
   int buf_size = 1<<20;
 	int bytes_read = 0;
 	char buf[buf_size];
@@ -91,7 +94,6 @@ int server(int show_bar,char* filename,int port) {
   int all_bytes_transferred = BOOLEAN_FALSE;
 	int socketClosed = BOOLEAN_FALSE;
 
-  fprintf(stderr,"Connection established\n");
   long file_size = read_file_size(socketfd);
   if(file_size == -1)
     return EXIT_FAILURE;

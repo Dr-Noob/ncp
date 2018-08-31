@@ -1,15 +1,15 @@
 #include <arpa/inet.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <string.h>
+#include <sys/time.h>
+#include <unistd.h>
 #include <assert.h>
 #include <signal.h>
-#include <sys/time.h>
 #include <sys/stat.h>
 #include <errno.h>
+
 #include "args.h"
 #include "tools.h"
 #include "progressbar.h"
@@ -57,21 +57,22 @@ int client(int show_bar,char* filename, char* addr, int port) {
   if(file == -1)
     return BOOLEAN_FALSE;
 
-	assert(addr != NULL);
   //Ignore SIGPIPE, we'll treat them later if necessary(in write_all)
   signal(SIGPIPE, SIG_IGN);
-  int socketfd = -1;
+	assert(addr != NULL);
+
   socklen_t length;
+  int socketfd = -1;
 	static struct sockaddr_in serv_addr;
+
+  serv_addr.sin_family = AF_INET;
+  if(port == INVALID_PORT)serv_addr.sin_port = htons(DEFAULT_PORT);
+  else serv_addr.sin_port = htons(port);
 
   if((socketfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
 		perror("socket");
 		return EXIT_FAILURE;
 	}
-
-  serv_addr.sin_family = AF_INET;
-	if(port == INVALID_PORT)serv_addr.sin_port = htons(DEFAULT_PORT);
-  else serv_addr.sin_port = htons(port);
 
   if(inet_pton(AF_INET, addr, &serv_addr.sin_addr) <= 0 )
   {
@@ -87,15 +88,16 @@ int client(int show_bar,char* filename, char* addr, int port) {
       return EXIT_FAILURE;
   }
 
-  fprintf(stderr,"Connected\n");
+  /*** CONECTION ESTABLISHED ***/
+  fprintf(stderr,"Connection established\n");
   int buf_size = 1<<20;
   int bytes_read = 0;
-  int status = BOOLEAN_TRUE;
-	struct stats_info stats;
-  long int bytes_transferred = 0;
-	int all_bytes_transferred = BOOLEAN_FALSE;
-	char buf[buf_size];
+  char buf[buf_size];
   struct timeval t0,t1;
+  struct stats_info stats;
+  long int bytes_transferred = 0;
+  int all_bytes_transferred = BOOLEAN_FALSE;
+  int status = BOOLEAN_TRUE;
 
 	long int file_size = getFileSize(filename);
 	if(file_size == -1)
