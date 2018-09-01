@@ -85,9 +85,8 @@ int server(int show_bar,char* filename,int port) {
 
   /*** CONECTION ESTABLISHED ***/
   fprintf(stderr,"Connection established\n");
-  int buf_size = 1<<20;
 	int bytes_read = 0;
-	char buf[buf_size];
+	char buf[BUF_SIZE];
   struct timeval t0,t1;
   struct stats_info stats;
   long int bytes_transferred = 0;
@@ -114,12 +113,12 @@ int server(int show_bar,char* filename,int port) {
 
   do {
     bytes_read = 0;
-    memset(buf, 0, buf_size);
+    memset(buf, 0, BUF_SIZE);
 
-    bytes_read = read(socketfd, buf, buf_size);
+    bytes_read = read(socketfd, buf, BUF_SIZE);
 		if(bytes_read > 0) {
       //Force closing socket if write to file fails
-      if(!write_all(file,buf,MIN(bytes_read,buf_size)))
+      if(!write_all(file,buf,MIN(bytes_read,BUF_SIZE)))
         socketClosed = BOOLEAN_TRUE;
       else
         bytes_transferred += bytes_read;

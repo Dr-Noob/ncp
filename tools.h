@@ -5,6 +5,7 @@
 #define BOOLEAN_TRUE  1
 #define UNKNOWN_FILE_SIZE 0
 #define DEFAULT_PORT 5000
+#define BUF_SIZE 1<<20
 
 #define MIN(a,b) (((a)<(b))?(a):(b))
 #define MAX(a,b) (((a)>(b))?(a):(b))

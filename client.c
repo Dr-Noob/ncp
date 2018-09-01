@@ -9,10 +9,12 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <semaphore.h>
 
 #include "args.h"
 #include "tools.h"
 #include "progressbar.h"
+#include "hash.h"
 
 int getFileToRead(char* filename) {
   if(filename == NULL)
@@ -38,6 +40,8 @@ void send_file_size(int fd, long int size) {
 
 long int getFileSize(char* filename) {
 	struct stat st;
+  if(filename == NULL)
+    return UNKNOWN_FILE_SIZE;
 	if(stat(filename, &st) == -1) {
 		if(errno == EFAULT) {
 			//File does not exist
@@ -90,14 +94,26 @@ int client(int show_bar,char* filename, char* addr, int port) {
 
   /*** CONECTION ESTABLISHED ***/
   fprintf(stderr,"Connection established\n");
-  int buf_size = 1<<20;
   int bytes_read = 0;
-  char buf[buf_size];
+  char buf[BUF_SIZE];
   struct timeval t0,t1;
   struct stats_info stats;
+  struct hash_struct hash;
   long int bytes_transferred = 0;
   int all_bytes_transferred = BOOLEAN_FALSE;
   int status = BOOLEAN_TRUE;
+  sem_t thread_sem;
+	sem_t main_sem;
+
+  if(sem_init(&thread_sem,0,0) == -1) {
+    perror("client");
+    return EXIT_FAILURE;
+  }
+
+  if(sem_init(&main_sem,0,0) == -1) {
+    perror("client");
+    return EXIT_FAILURE;
+  }
 
 	long int file_size = getFileSize(filename);
 	if(file_size == -1)
@@ -106,6 +122,11 @@ int client(int show_bar,char* filename, char* addr, int port) {
 	stats.bytes_transferred = &bytes_transferred;
 	stats.all_bytes_transferred = &all_bytes_transferred;
 	stats.file_size = &file_size;
+
+  hash.thread_sem = &thread_sem;
+  hash.main_sem = &main_sem;
+  hash.data = buf;
+  hash.eof = &all_bytes_transferred;
 
 	send_file_size(socketfd,file_size);
   gettimeofday(&t0, 0);
@@ -118,8 +139,19 @@ int client(int show_bar,char* filename, char* addr, int port) {
   	}
   }
 
-  memset(buf, 0, buf_size);
-  bytes_read = read(file, buf, buf_size);
+  pthread_t hash_thread;
+  if(pthread_create(&hash_thread, NULL, sha1sum, &hash)) {
+		fprintf(stderr, "Error creating thread\n");
+		return EXIT_FAILURE;
+	}
+
+  memset(buf, 0, BUF_SIZE);
+  bytes_read = read(file, buf, BUF_SIZE);
+  //Wake up thread, data is ready
+  if(sem_post(&thread_sem) == -1) {
+    perror("client");
+    return EXIT_FAILURE;
+  }
 
   while(status && bytes_read > 0) {
     status = write_all(socketfd,buf,bytes_read);
@@ -128,13 +160,36 @@ int client(int show_bar,char* filename, char* addr, int port) {
       //read if and only if write succedded
       bytes_transferred += bytes_read;
 
+      //Wait thread to have calculated the partial hash
+      if(sem_wait(&main_sem) == -1) {
+        perror("client");
+        return EXIT_FAILURE;
+      }
       memset(buf, 0, bytes_read);
-      bytes_read = read(file, buf, buf_size);
+      bytes_read = read(file, buf, BUF_SIZE);
+
+      if(bytes_read > 0) {
+        //Wake up thread, data is ready
+        if(sem_post(&thread_sem) == -1) {
+          perror("client");
+          return EXIT_FAILURE;
+        }
+      }
     }
   }
 
-	all_bytes_transferred = BOOLEAN_TRUE;
   gettimeofday(&t1, 0);
+	all_bytes_transferred = BOOLEAN_TRUE;
+  //Wake up thread, file read completely
+  if(sem_post(&thread_sem) == -1) {
+    perror("client");
+    return EXIT_FAILURE;
+  }
+
+  if(pthread_join(hash_thread, NULL)) {
+    fprintf(stderr, "Error joining thread\n");
+    return EXIT_FAILURE;
+  }
 
   if(show_bar) {
     if(pthread_join(status_thread, NULL)) {
@@ -144,6 +199,11 @@ int client(int show_bar,char* filename, char* addr, int port) {
   }
   else
     fprintf(stderr, "Connection closed\n");
+
+  fprintf(stderr,"Hash=\n");
+  for (int len = 0; len < SHA_DIGEST_LENGTH; ++len)
+    fprintf(stderr,"%02x", hash.hash[len]);
+  fprintf(stderr,"\n");
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);
