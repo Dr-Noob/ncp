@@ -3,7 +3,7 @@
 
 #define BOOLEAN_FALSE 0
 #define BOOLEAN_TRUE  1
-#define UNKNOWN_FILE_SIZE 0
+#define UNKNOWN_FILE_SIZE -2
 #define DEFAULT_PORT 5000
 #define BUF_SIZE 1<<20
 

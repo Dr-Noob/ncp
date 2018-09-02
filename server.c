@@ -127,6 +127,8 @@ int server(int show_bar,char* filename,int port) {
   long file_size = read_file_size(socketfd);
   if(file_size == -1)
     return EXIT_FAILURE;
+  if(file_size == UNKNOWN_FILE_SIZE)
+    show_bar = BOOLEAN_FALSE;
 
   stats.bytes_transferred = &bytes_transferred;
 	stats.all_bytes_transferred = &all_bytes_transferred;

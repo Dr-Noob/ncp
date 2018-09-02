@@ -66,6 +66,14 @@ int client(int show_bar,char* filename, char* addr, int port) {
   if(file == -1)
     return BOOLEAN_FALSE;
 
+  long int file_size = getFileSize(filename);
+	if(file_size == -1)
+		return EXIT_FAILURE;
+  else if(file_size == 0) {
+    fprintf(stderr,"ERROR: File '%s' is empty, will not be sent\n",filename);
+    return EXIT_FAILURE;
+  }
+
   //Ignore SIGPIPE, we'll treat them later if necessary(in write_all)
   signal(SIGPIPE, SIG_IGN);
 	assert(addr != NULL);
@@ -119,10 +127,6 @@ int client(int show_bar,char* filename, char* addr, int port) {
     perror("client");
     return EXIT_FAILURE;
   }
-
-	long int file_size = getFileSize(filename);
-	if(file_size == -1)
-		return EXIT_FAILURE;
 
 	stats.bytes_transferred = &bytes_transferred;
 	stats.all_bytes_transferred = &all_bytes_transferred;
