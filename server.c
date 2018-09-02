@@ -62,6 +62,7 @@ int read_hash(int fd, unsigned char* hash[SHA_DIGEST_LENGTH]) {
   return EXIT_SUCCESS;
 }
 
+//show_bar: flag that tells if show_bar thread should be spawned or not
 //filename: optional(if not passed, use STDOUT)
 //port: optional(if not passed, use DEFAULT_PORT)
 int server(int show_bar,char* filename,int port) {
@@ -159,7 +160,6 @@ int server(int show_bar,char* filename,int port) {
 	}
 
   do {
-    bytes_read = 0;
     bytes_read = read(socketfd, buf, BUF_SIZE);
 
 		if(bytes_read > 0) {

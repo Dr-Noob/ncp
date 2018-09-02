@@ -59,6 +59,7 @@ long int getFileSize(char* filename) {
 	return st.st_size;
 }
 
+//show_bar: flag that tells if show_bar thread should be spawned or not
 //filename: optional(if not passed, use STDIN)
 //addr: mandatory
 //port: optinal(if not passed, use DEFAULT_PORT)
@@ -157,7 +158,6 @@ int client(int show_bar,char* filename, char* addr, int port) {
 		return EXIT_FAILURE;
 	}
 
-  memset(buf, 0, BUF_SIZE);
   bytes_read = read(file, buf, BUF_SIZE);
   //Wake up thread, data is ready
   if(sem_post(&thread_sem) == -1) {
@@ -177,7 +177,6 @@ int client(int show_bar,char* filename, char* addr, int port) {
         perror("client");
         return EXIT_FAILURE;
       }
-      memset(buf, 0, bytes_read);
       bytes_read = read(file, buf, BUF_SIZE);
 
       if(bytes_read > 0) {
