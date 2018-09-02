@@ -4,7 +4,7 @@
 #include "client.h"
 #include "server.h"
 
-static const char* VERSION = "0.31";
+static const char* VERSION = "0.4";
 
 void help(int argc, char *argv[]) {
 	fprintf(stderr,"ncp v%s -- Copy files over the network\n\

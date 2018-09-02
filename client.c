@@ -34,8 +34,13 @@ int getFileToRead(char* filename) {
   return fileno(fp);
 }
 
+//TODO: return status
 void send_file_size(int fd, long int size) {
 	write_all(fd,(char*)&size,sizeof(long));
+}
+
+void send_hash(int fd,unsigned char hash[SHA_DIGEST_LENGTH]) {
+  write_all(fd,(char *)hash,SHA_DIGEST_LENGTH);
 }
 
 long int getFileSize(char* filename) {
@@ -99,11 +104,11 @@ int client(int show_bar,char* filename, char* addr, int port) {
   struct timeval t0,t1;
   struct stats_info stats;
   struct hash_struct hash;
+  sem_t thread_sem;
+	sem_t main_sem;
   long int bytes_transferred = 0;
   int all_bytes_transferred = BOOLEAN_FALSE;
   int status = BOOLEAN_TRUE;
-  sem_t thread_sem;
-	sem_t main_sem;
 
   if(sem_init(&thread_sem,0,0) == -1) {
     perror("client");
@@ -126,6 +131,7 @@ int client(int show_bar,char* filename, char* addr, int port) {
   hash.thread_sem = &thread_sem;
   hash.main_sem = &main_sem;
   hash.data = buf;
+  hash.data_size = &bytes_read;
   hash.eof = &all_bytes_transferred;
 
 	send_file_size(socketfd,file_size);
@@ -178,6 +184,9 @@ int client(int show_bar,char* filename, char* addr, int port) {
     }
   }
 
+  if(bytes_read == -1)
+    perror("read");
+
   gettimeofday(&t1, 0);
 	all_bytes_transferred = BOOLEAN_TRUE;
   //Wake up thread, file read completely
@@ -191,6 +200,10 @@ int client(int show_bar,char* filename, char* addr, int port) {
     return EXIT_FAILURE;
   }
 
+  /*** CLOSE DATA SOCKET ***/
+  if(close(socketfd) == -1)
+    perror("close");
+
   if(show_bar) {
     if(pthread_join(status_thread, NULL)) {
   		fprintf(stderr, "Error joining thread\n");
@@ -200,22 +213,28 @@ int client(int show_bar,char* filename, char* addr, int port) {
   else
     fprintf(stderr, "Connection closed\n");
 
-  fprintf(stderr,"Hash=\n");
-  for (int len = 0; len < SHA_DIGEST_LENGTH; ++len)
-    fprintf(stderr,"%02x", hash.hash[len]);
-  fprintf(stderr,"\n");
+  /*** OPEN NEW SOCKET TO SEND HASH ***/
+  if((socketfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
+		perror("socket");
+		return EXIT_FAILURE;
+	}
+
+  if (connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  {
+      perror("connect");
+      return EXIT_FAILURE;
+  }
+
+  send_hash(socketfd,hash.hash);
+
+  if(close(socketfd) == -1)
+    perror("close");
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);
   fprintf(stderr,"     Bytes sent = %s\n",bytes_to_hr(bytes_transferred,BOOLEAN_FALSE));
   fprintf(stderr,"  Average Speed = %sps\n",bytes_to_hr((long)(bytes_transferred/e_time),BOOLEAN_TRUE));
 	fprintf(stderr,"                  %s/s\n",bytes_to_hr((long)(bytes_transferred/e_time),BOOLEAN_FALSE));
-
-  if(bytes_read == -1)
-    perror("read");
-
-  if(close(socketfd) == -1)
-    perror("close");
 
 	return EXIT_SUCCESS;
 }

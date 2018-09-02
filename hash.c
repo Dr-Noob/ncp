@@ -18,7 +18,7 @@ void *sha1sum(void* hs) {
       break;
 
     //Data is ready, update hash
-    SHA1_Update(&ctx, s->data, BUF_SIZE);
+    SHA1_Update(&ctx, s->data, *s->data_size);
 
     //Tell main thread we're done
     if(sem_post(s->main_sem) == -1) {
