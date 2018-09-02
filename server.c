@@ -10,6 +10,7 @@
 #include "tools.h"
 #include "progressbar.h"
 #include "hash.h"
+#define BUF_SIZE 1<<15
 
 int getFileToWrite(char* filename) {
   if(filename == NULL)
