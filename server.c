@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "args.h"
 #include "tools.h"
@@ -21,13 +22,13 @@ int getFileToWrite(char* filename) {
     return -1;
   }
 
-  FILE *fp = fopen(filename, "w");
-  if(fp == NULL) {
-    perror("fopen");
+  int file = open(filename,O_CREAT | O_WRONLY);
+  if(file == -1) {
+    perror("open");
     return -1;
   }
 
-  return fileno(fp);
+  return file;
 }
 
 long int read_file_size(int fd) {
@@ -206,6 +207,9 @@ int server(int show_bar,char* filename,int port) {
     fprintf(stderr, "Error joining thread\n");
     return EXIT_FAILURE;
   }
+
+  if(close(file) == -1)
+    perror("close");
 
   /*** CLOSE DATA SOCKET ***/
   if(close(socketfd) == -1)

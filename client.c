@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <assert.h>
 #include <signal.h>
 #include <sys/stat.h>
@@ -26,22 +27,21 @@ int getFileToRead(char* filename) {
     return -1;
   }
 
-  FILE *fp = fopen(filename, "r");
-  if(fp == NULL) {
-    perror("fopen");
+  int file = open(filename,O_CREAT | O_RDONLY);
+  if(file == -1) {
+    perror("open");
     return -1;
   }
 
-  return fileno(fp);
+  return file;
 }
 
-//TODO: return status
-void send_file_size(int fd, long int size) {
-	write_all(fd,(char*)&size,sizeof(long));
+int send_file_size(int fd, long int size) {
+	return write_all(fd,(char*)&size,sizeof(long));
 }
 
-void send_hash(int fd,unsigned char hash[SHA_DIGEST_LENGTH]) {
-  write_all(fd,(char *)hash,SHA_DIGEST_LENGTH);
+int send_hash(int fd,unsigned char hash[SHA_DIGEST_LENGTH]) {
+  return write_all(fd,(char *)hash,SHA_DIGEST_LENGTH);
 }
 
 long int getFileSize(char* filename) {
@@ -139,7 +139,8 @@ int client(int show_bar,char* filename, char* addr, int port) {
   hash.data_size = &bytes_read;
   hash.eof = &all_bytes_transferred;
 
-	send_file_size(socketfd,file_size);
+	if(!send_file_size(socketfd,file_size))
+    return EXIT_FAILURE;
   gettimeofday(&t0, 0);
 
   pthread_t status_thread;
@@ -205,6 +206,9 @@ int client(int show_bar,char* filename, char* addr, int port) {
     return EXIT_FAILURE;
   }
 
+  if(close(file) == -1)
+    perror("close");
+
   /*** CLOSE DATA SOCKET ***/
   if(close(socketfd) == -1)
     perror("close");
@@ -232,7 +236,8 @@ int client(int show_bar,char* filename, char* addr, int port) {
         return EXIT_FAILURE;
     }
 
-    send_hash(socketfd,hash.hash);
+    if(!send_hash(socketfd,hash.hash))
+      return EXIT_FAILURE;
 
     if(close(socketfd) == -1)
       perror("close");
