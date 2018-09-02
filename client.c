@@ -217,22 +217,25 @@ int client(int show_bar,char* filename, char* addr, int port) {
   else
     fprintf(stderr, "Connection closed\n");
 
-  /*** OPEN NEW SOCKET TO SEND HASH ***/
-  if((socketfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
-		perror("socket");
-		return EXIT_FAILURE;
-	}
-
-  if (connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-  {
-      perror("connect");
+  /*** JUST OPEN A NEW CONNECTION IF FIRST ONE ENDED SUCCESSFULLY ***/
+  if(status) {
+    /*** OPEN NEW SOCKET TO SEND HASH ***/
+    if((socketfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
+      perror("socket");
       return EXIT_FAILURE;
+    }
+
+    if (connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    {
+        perror("connect");
+        return EXIT_FAILURE;
+    }
+
+    send_hash(socketfd,hash.hash);
+
+    if(close(socketfd) == -1)
+      perror("close");
   }
-
-  send_hash(socketfd,hash.hash);
-
-  if(close(socketfd) == -1)
-    perror("close");
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);
