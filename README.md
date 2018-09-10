@@ -38,3 +38,9 @@ This software can work in two modes:
 * **Speed and time statistics**: At the end of the transfer, ncp will show time and average speed of the transaction.
 
 * **Hash compare**: At the same time the transfer is taking place, it's also calculating _sha1_ hash of the file being sent(by client) and the hash of the file being received(by the server). At the end, client will send it to the server which will compare both to determine if file was transferred with no errors.
+
+## Dependencies
+
+You need openssl lib headers to compile ncp. If you're using Debian based distributions(eg, Ubuntu), you can install it with:
+
+    sudo apt-get install libssl-dev
