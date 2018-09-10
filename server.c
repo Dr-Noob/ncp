@@ -133,6 +133,7 @@ int server(int show_bar,char* filename,int port) {
   if(file_size == UNKNOWN_FILE_SIZE)
     show_bar = BOOLEAN_FALSE;
 
+  fprintf(stderr,"File size is %s\n",bytes_to_hr(file_size,BOOLEAN_FALSE));
   stats.bytes_transferred = &bytes_transferred;
 	stats.all_bytes_transferred = &all_bytes_transferred;
 	stats.file_size = &file_size;
