@@ -22,7 +22,7 @@ int getFileToWrite(char* filename) {
     return -1;
   }
 
-  int file = open(filename,O_CREAT | O_WRONLY);
+  int file = open(filename,O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
   if(file == -1) {
     perror("open");
     return -1;

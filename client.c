@@ -95,7 +95,7 @@ int client(int show_bar,char* filename, char* addr, int port) {
 
   if(inet_pton(AF_INET, addr, &serv_addr.sin_addr) <= 0 )
   {
-      fprintf(stderr,"Invalid address\n");
+      perror("inet_pton");
       return EXIT_FAILURE;
   }
 
