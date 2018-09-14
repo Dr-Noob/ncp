@@ -45,13 +45,6 @@ int check_options() {
     }
   } else if(args.addr != NULL) {
     args.mode = MODE_CLIENT;
-
-    //Check ip is valid
-    struct sockaddr_in sa;
-    if(inet_pton(AF_INET, args.addr, &(sa.sin_addr)) == 0) {
-      fprintf(stderr,"ERROR: IP address('%s') is invalid\n",args.addr);
-      return BOOLEAN_FALSE;
-    }
   } else if(!args.help_flag){
     fprintf(stderr,"ERROR: None address specified nor listen option\n");
     args.help_flag = BOOLEAN_TRUE;

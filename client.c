@@ -11,6 +11,9 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #include "args.h"
 #include "tools.h"
@@ -59,6 +62,53 @@ long int getFileSize(char* filename) {
 	return st.st_size;
 }
 
+struct sockaddr_in* get_server_struct(char* addr, int port) {
+  struct sockaddr_in* serv_addr = malloc(sizeof(struct sockaddr_in));
+  memset(serv_addr,0,sizeof(struct sockaddr_in));
+  serv_addr->sin_family = AF_INET;
+  if(port == INVALID_PORT)serv_addr->sin_port = htons(DEFAULT_PORT);
+  else serv_addr->sin_port = htons(port);
+
+  if(inet_pton(AF_INET, addr, &serv_addr->sin_addr) > 0 )
+    return serv_addr;
+
+  //If inet_pton fails, we'll issue a DNS search
+  struct addrinfo hints, *res;
+  char addrstr[INET_ADDRSTRLEN];
+  int err = 0;
+
+  memset (&hints, 0, sizeof (hints));
+  hints.ai_family = PF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags |= AI_CANONNAME;
+
+  err = getaddrinfo (addr, NULL, &hints, &res);
+  if(err != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(err));
+    return NULL;
+  }
+
+  while (res != NULL) {
+    inet_ntop (res->ai_family, res->ai_addr->sa_data, addrstr, INET_ADDRSTRLEN);
+
+    if(res->ai_family == AF_INET) {
+      //Is a IPv4 address
+      inet_ntop (res->ai_family, &((struct sockaddr_in *) res->ai_addr)->sin_addr, addrstr, INET_ADDRSTRLEN);
+
+      if(inet_pton(AF_INET, addrstr, &serv_addr->sin_addr) <= 0 ) {
+        perror("inet_pton");
+        return NULL;
+      }
+      else
+        return serv_addr;
+    }
+    res = res->ai_next;
+  }
+
+  fprintf(stderr, "getaddrinfo: No DNS name for %s\n", addr);
+  return NULL;
+}
+
 //show_bar: flag that tells if show_bar thread should be spawned or not
 //filename: optional(if not passed, use STDIN)
 //addr: mandatory
@@ -81,27 +131,22 @@ int client(int show_bar,char* filename, char* addr, int port) {
 	assert(addr != NULL);
 
   socklen_t length;
+  struct sockaddr_in* serv_addr;
+  char* ip = NULL;
   int socketfd = -1;
-	static struct sockaddr_in serv_addr;
-
-  serv_addr.sin_family = AF_INET;
-  if(port == INVALID_PORT)serv_addr.sin_port = htons(DEFAULT_PORT);
-  else serv_addr.sin_port = htons(port);
 
   if((socketfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
 		perror("socket");
 		return EXIT_FAILURE;
 	}
 
-  if(inet_pton(AF_INET, addr, &serv_addr.sin_addr) <= 0 )
-  {
-      perror("inet_pton");
-      return EXIT_FAILURE;
-  }
+  //serv_addr will not be freed to simplify code
+  if((serv_addr = get_server_struct(addr,port)) == NULL)
+    return EXIT_FAILURE;
 
   fprintf(stderr,"Trying connection to %s:%d...\n",addr,port == INVALID_PORT ? DEFAULT_PORT : port);
 
-  if (connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+  if (connect(socketfd, (struct sockaddr *)serv_addr, sizeof(struct sockaddr_in)) < 0)
   {
       perror("connect");
       return EXIT_FAILURE;
@@ -189,8 +234,10 @@ int client(int show_bar,char* filename, char* addr, int port) {
     }
   }
 
-  if(bytes_read == -1)
+  if(bytes_read == -1) {
     perror("read");
+    return EXIT_FAILURE;
+  }
 
   gettimeofday(&t1, 0);
 	all_bytes_transferred = BOOLEAN_TRUE;
@@ -229,7 +276,7 @@ int client(int show_bar,char* filename, char* addr, int port) {
       return EXIT_FAILURE;
     }
 
-    if (connect(socketfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+    if (connect(socketfd, (struct sockaddr *)serv_addr, sizeof(struct sockaddr_in)) < 0)
     {
         perror("connect");
         return EXIT_FAILURE;
