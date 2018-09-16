@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include "args.h"
 #include "tools.h"
@@ -148,15 +149,15 @@ int server(int show_bar,char* filename,int port) {
 
 	pthread_t status_thread;
   if(show_bar) {
-    if(pthread_create(&status_thread, NULL, &print_status, &stats)) {
-  		fprintf(stderr, "Error creating thread\n");
+    if((errno = pthread_create(&status_thread, NULL, &print_status, &stats)) != 0) {
+  		perror("pthread_create");
   		return EXIT_FAILURE;
   	}
   }
 
   pthread_t hash_thread;
-  if(pthread_create(&hash_thread, NULL, sha1sum, &hash)) {
-		fprintf(stderr, "Error creating thread\n");
+  if((errno = pthread_create(&hash_thread, NULL, sha1sum, &hash)) != 0) {
+		perror("pthread_create");
 		return EXIT_FAILURE;
 	}
 
@@ -204,8 +205,8 @@ int server(int show_bar,char* filename,int port) {
     return EXIT_FAILURE;
   }
 
-  if(pthread_join(hash_thread, NULL)) {
-    fprintf(stderr, "Error joining thread\n");
+  if((errno = pthread_join(hash_thread, NULL)) != 0) {
+    perror("pthread_join");
     return EXIT_FAILURE;
   }
 
@@ -217,8 +218,8 @@ int server(int show_bar,char* filename,int port) {
     perror("close");
 
   if(show_bar) {
-    if(pthread_join(status_thread, NULL)) {
-  		fprintf(stderr, "Error joining thread\n");
+    if((errno = pthread_join(status_thread, NULL)) != 0) {
+  		perror("pthread_join");
   		return EXIT_FAILURE;
   	}
   }
