@@ -21,26 +21,32 @@
 #include "hash.h"
 #define BUF_SIZE 1<<15
 
-int getFileToRead(char* filename) {
-  if(filename == NULL)
-    return STDIN_FILENO;
+mode_t getFileMode(char* path) {
+  assert(path != NULL);
 
-  if( access( filename, F_OK ) == -1 ) {
-    fprintf(stderr,"ERROR: File '%s' doest not exists\n",filename);
-    return -1;
-  }
+  struct stat st;
+	if(stat(path,&st) == -1) {
+		perror("getFileMode: stat");
+		return 0;
+	}
 
-  int file = open(filename,O_CREAT | O_RDONLY);
+  return st.st_mode;
+}
+
+int getFileToRead(char* path) {
+  assert(path != NULL);
+
+  int file = open(path,O_RDONLY);
   if(file == -1) {
-    perror("open");
+    perror("getFileToRead: open");
     return -1;
   }
 
   return file;
 }
 
-int send_file_size(int fd, long int size) {
-	return write_all(fd,(char*)&size,sizeof(long));
+int send_longint(int fd, long int data) {
+	return write_all(fd,(char*)&data,sizeof(data));
 }
 
 int send_hash(int fd,unsigned char hash[SHA_DIGEST_LENGTH]) {
@@ -114,9 +120,17 @@ struct sockaddr_in* get_server_struct(char* addr, int port) {
 //addr: mandatory
 //port: optinal(if not passed, use DEFAULT_PORT)
 int client(int show_bar,char* filename, char* addr, int port) {
-	int file = getFileToRead(filename);
-  if(file == -1)
-    return BOOLEAN_FALSE;
+  int file = 0;
+  mode_t file_mode;
+
+  if(filename == NULL)
+    file = STDIN_FILENO;
+  else {
+    if((file = getFileToRead(filename)) == -1)
+      return BOOLEAN_FALSE;
+    if((file_mode = getFileMode(filename)) == 0)
+      return BOOLEAN_FALSE;
+  }
 
   long int file_size = getFileSize(filename);
 	if(file_size == -1)
@@ -185,7 +199,9 @@ int client(int show_bar,char* filename, char* addr, int port) {
   hash.data_size = &bytes_read;
   hash.eof = &all_bytes_transferred;
 
-	if(!send_file_size(socketfd,file_size))
+	if(!send_longint(socketfd,file_size))
+    return EXIT_FAILURE;
+  if(!send_longint(socketfd,(long int)file_mode))
     return EXIT_FAILURE;
   gettimeofday(&t0, 0);
 

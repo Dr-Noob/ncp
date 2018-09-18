@@ -14,7 +14,7 @@
 #include "hash.h"
 #define BUF_SIZE 1<<15
 
-int getFileToWrite(char* filename) {
+int getFileToWrite(char* filename,mode_t file_mode) {
   if(filename == NULL)
     return STDOUT_FILENO;
 
@@ -23,7 +23,7 @@ int getFileToWrite(char* filename) {
     return -1;
   }
 
-  int file = open(filename,O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+  int file = open(filename,file_mode);
   if(file == -1) {
     perror("open");
     return -1;
@@ -32,7 +32,7 @@ int getFileToWrite(char* filename) {
   return file;
 }
 
-long int read_file_size(int fd) {
+long int read_longint(int fd) {
   long int ret = 0;
   int bytes_read = read(fd, (char*)&ret, sizeof(long));
 
@@ -67,10 +67,6 @@ int read_hash(int fd, unsigned char* hash[SHA_DIGEST_LENGTH]) {
 //filename: optional(if not passed, use STDOUT)
 //port: optional(if not passed, use DEFAULT_PORT)
 int server(int show_bar,char* filename,int port) {
-  int file = getFileToWrite(filename);
-  if(file == -1)
-    return BOOLEAN_FALSE;
-
   socklen_t length;
   int listenfd = -1;
   int socketfd = -1;
@@ -128,11 +124,19 @@ int server(int show_bar,char* filename,int port) {
     return EXIT_FAILURE;
   }
 
-  long file_size = read_file_size(socketfd);
-  if(file_size == -1)
+  long file_size;
+  mode_t file_mode;
+  if((file_size = read_longint(socketfd)) == -1)
     return EXIT_FAILURE;
   if(file_size == UNKNOWN_FILE_SIZE)
     show_bar = BOOLEAN_FALSE;
+
+  if((file_mode = (mode_t)read_longint(socketfd)) == 0)
+    return EXIT_FAILURE;
+
+  int file = getFileToWrite(filename,file_mode);
+  if(file == -1)
+    return BOOLEAN_FALSE;
 
   fprintf(stderr,"File size is %s\n",bytes_to_hr(file_size,BOOLEAN_FALSE));
   stats.bytes_transferred = &bytes_transferred;
