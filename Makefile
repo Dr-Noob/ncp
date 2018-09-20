@@ -8,13 +8,14 @@ SERVER=server.c
 TOOLS=tools.c
 PROGRESSBAR=progressbar.c
 HASH=hash.c
+MESSAGE=msg.c
 
-HEADERS=args.h client.h server.h tools.h progressbar.h hash.h
+HEADERS=args.h client.h server.h tools.h progressbar.h hash.h msg.h
 
 OUTPUT=ncp
 
-$(OUTPUT): Makefile $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(PROGRESSBAR) $(HASH) $(HEADERS)
-	$(CXX) -g $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(PROGRESSBAR) $(HASH) -pthread -lcrypto $(SANITY_FLAGS) -o $(OUTPUT)
+$(OUTPUT): Makefile $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(PROGRESSBAR) $(HASH) $(MESSAGE) $(HEADERS)
+	$(CXX) -g $(MAIN) $(ARGS) $(CLIENT) $(SERVER) $(TOOLS) $(PROGRESSBAR) $(HASH) $(MESSAGE) -pthread -lcrypto $(SANITY_FLAGS) -o $(OUTPUT)
 
 clean:
 	@rm $(OUTPUT)

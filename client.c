@@ -19,6 +19,8 @@
 #include "tools.h"
 #include "progressbar.h"
 #include "hash.h"
+#include "msg.h"
+
 #define BUF_SIZE 1<<15
 
 mode_t getFileMode(char* path) {
@@ -177,7 +179,7 @@ int client(int show_bar,char* filename, char* addr, int port) {
 	sem_t main_sem;
   long int bytes_transferred = 0;
   int all_bytes_transferred = BOOLEAN_FALSE;
-  int status = BOOLEAN_TRUE;
+  int closeSocket = BOOLEAN_FALSE;
 
   if(sem_init(&thread_sem,0,0) == -1) {
     perror("client");
@@ -226,10 +228,8 @@ int client(int show_bar,char* filename, char* addr, int port) {
     return EXIT_FAILURE;
   }
 
-  while(status && bytes_read > 0) {
-    status = write_all(socketfd,buf,bytes_read);
-
-    if(status) {
+  while(!closeSocket && bytes_read > 0) {
+    if(send_msg_chunk(socketfd,bytes_read != BUF_SIZE,buf,bytes_read)) {
       //read if and only if write succedded
       bytes_transferred += bytes_read;
 
@@ -248,6 +248,8 @@ int client(int show_bar,char* filename, char* addr, int port) {
         }
       }
     }
+    else
+      closeSocket = BOOLEAN_TRUE;
   }
 
   if(bytes_read == -1) {
@@ -268,11 +270,16 @@ int client(int show_bar,char* filename, char* addr, int port) {
     return EXIT_FAILURE;
   }
 
-  if(close(file) == -1)
+  if(!closeSocket) {
+    /*** JUST CONTINUE IF NO ERROR HAPPENED ***/
+    if(!send_hash(socketfd,hash.hash))
+      return EXIT_FAILURE;
+  }
+
+  if(close(socketfd) == -1)
     perror("close");
 
-  /*** CLOSE DATA SOCKET ***/
-  if(close(socketfd) == -1)
+  if(close(file) == -1)
     perror("close");
 
   if(show_bar) {
@@ -283,27 +290,6 @@ int client(int show_bar,char* filename, char* addr, int port) {
   }
   else
     fprintf(stderr, "Connection closed\n");
-
-  /*** JUST OPEN A NEW CONNECTION IF FIRST ONE ENDED SUCCESSFULLY ***/
-  if(status) {
-    /*** OPEN NEW SOCKET TO SEND HASH ***/
-    if((socketfd = socket(AF_INET, SOCK_STREAM,0)) == -1) {
-      perror("socket");
-      return EXIT_FAILURE;
-    }
-
-    if (connect(socketfd, (struct sockaddr *)serv_addr, sizeof(struct sockaddr_in)) < 0)
-    {
-        perror("connect");
-        return EXIT_FAILURE;
-    }
-
-    if(!send_hash(socketfd,hash.hash))
-      return EXIT_FAILURE;
-
-    if(close(socketfd) == -1)
-      perror("close");
-  }
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
   fprintf(stderr,"           Time = %.2f s\n",e_time);

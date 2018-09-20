@@ -12,6 +12,8 @@
 #include "tools.h"
 #include "progressbar.h"
 #include "hash.h"
+#include "msg.h"
+
 #define BUF_SIZE 1<<15
 
 int getFileToWrite(char* filename,mode_t file_mode) {
@@ -111,7 +113,8 @@ int server(int show_bar,char* filename,int port) {
 	sem_t main_sem;
   long int bytes_transferred = 0;
   int all_bytes_transferred = BOOLEAN_FALSE;
-	int socketClosed = BOOLEAN_FALSE;
+	int closeSocket = BOOLEAN_FALSE;
+  int last_chunk = BOOLEAN_FALSE;
   unsigned char received_hash[SHA_DIGEST_LENGTH];
 
   if(sem_init(&thread_sem,0,0) == -1) {
@@ -166,9 +169,7 @@ int server(int show_bar,char* filename,int port) {
 	}
 
   do {
-    bytes_read = read(socketfd, buf, BUF_SIZE);
-
-		if(bytes_read > 0) {
+		if(read_msg_chunk(socketfd, &last_chunk, buf, &bytes_read)) {
       //Wake up thread, data is ready
       if(sem_post(&thread_sem) == -1) {
         perror("server");
@@ -177,7 +178,7 @@ int server(int show_bar,char* filename,int port) {
 
       //Force closing socket if write to file fails
       if(!write_all(file,buf,MIN(bytes_read,BUF_SIZE)))
-        socketClosed = BOOLEAN_TRUE;
+        closeSocket = BOOLEAN_TRUE;
       else
         bytes_transferred += bytes_read;
 
@@ -187,19 +188,9 @@ int server(int show_bar,char* filename,int port) {
         return EXIT_FAILURE;
       }
 		}
-    else if(bytes_read == -1)
-		{
-			perror("read");
-			socketClosed = BOOLEAN_TRUE;
-		}
-		else if(bytes_read == 0)
-		{
-			socketClosed = BOOLEAN_TRUE;
-		}
-    else {
-      fprintf(stderr,"Bug at line number %d in file %s\n", __LINE__, __FILE__);
-    }
-  } while(!socketClosed);
+    else
+      closeSocket = BOOLEAN_TRUE;
+  } while(!last_chunk && !closeSocket);
 
   gettimeofday(&t1, 0);
   all_bytes_transferred = BOOLEAN_TRUE;
@@ -214,12 +205,25 @@ int server(int show_bar,char* filename,int port) {
     return EXIT_FAILURE;
   }
 
-  if(close(file) == -1)
-    perror("close");
+  if(!closeSocket) {
+    /*** JUST CONTINUE IF NO ERROR HAPPENED ***/
+    read_hash(socketfd,(unsigned char**)&received_hash);
 
-  /*** CLOSE DATA SOCKET ***/
-  if(close(socketfd) == -1)
-    perror("close");
+    /*** CHECK HASH MATCHES ***/
+    if(memcmp(received_hash,hash.hash,SHA_DIGEST_LENGTH) != 0) {
+      fprintf(stderr, "FATAL ERROR: Hash does not match(calculated vs received)\n'");
+
+      for (int i = 0; i < SHA_DIGEST_LENGTH; i++)
+        fprintf(stderr,"%x", hash.hash[i]);
+
+      fprintf(stderr, "' vs '");
+
+      for (int i = 0; i < SHA_DIGEST_LENGTH; i++)
+        fprintf(stderr,"%x", received_hash[i]);
+
+      fprintf(stderr, "'\n");
+    }
+  }
 
   if(show_bar) {
     if((errno = pthread_join(status_thread, NULL)) != 0) {
@@ -230,31 +234,10 @@ int server(int show_bar,char* filename,int port) {
   else
     fprintf(stderr, "Connection closed\n");
 
-  /*** OPEN NEW SOCKET TO READ HASH ***/
-  if((socketfd = accept(listenfd, (struct sockaddr *)&cli_addr, &length)) < 0) {
-		perror("accept");
-    return EXIT_FAILURE;
-	}
-
-  read_hash(socketfd,(unsigned char**)&received_hash);
-
-  /*** CHECK HASH MATCHES ***/
-  if(memcmp(received_hash,hash.hash,SHA_DIGEST_LENGTH) != 0) {
-    fprintf(stderr, "FATAL ERROR: Hash does not match(calculated vs received)\n");
-    fprintf(stderr, "'");
-
-    for (int i = 0; i < SHA_DIGEST_LENGTH; i++)
-      fprintf(stderr,"%x", hash.hash[i]);
-
-    fprintf(stderr, "' vs '");
-
-    for (int i = 0; i < SHA_DIGEST_LENGTH; i++)
-      fprintf(stderr,"%x", received_hash[i]);
-
-    fprintf(stderr, "'\n");
-  }
-
 	if(close(socketfd) == -1)
+    perror("close");
+
+  if(close(file) == -1)
     perror("close");
 
   double e_time = (double)((t1.tv_sec-t0.tv_sec)*1000000 + t1.tv_usec-t0.tv_usec)/1000000;
