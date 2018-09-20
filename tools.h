@@ -10,6 +10,7 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 int write_all(int fd, char* buf,int bytes_read);
+int read_all(int fd, char* buf,int bytes_to_read);
 char* bytes_to_hr(long int bytes, int base2_flag);
 
 #endif
